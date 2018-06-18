@@ -6,6 +6,7 @@
   "author": "Hristo Spasov <hristo@arc-global.org>",
   "license": "MIT",
   "dependencies": {
+    "babel-polyfill": "^6.26.0",
     "form-urlencoded": "^2.0.4",
     "koa": "^2.5.0",
     "koa-bodyparser": "^4.2.0",
@@ -18,12 +19,15 @@
     "pg": "^7.4.1",
     "react": "^16.3.1",
     "react-dom": "^16.3.1",
-    "semistandard": "^12.0.1"
+    "semistandard": "^12.0.1",
+    "webpack-node-externals": "^1.7.2"
   },
   "scripts": {
-    "start": "semistandard && PGUSER=bookstore PGDATABASE=bookstore PGPASSWORD=bookstore PGPORT=5432 node app.js",
-    "watch": "webpack --mode=development --config webpack.config.js",
-    "build": "webpack --mode=production --config webpack.config.js",
+    "start": "PGUSER=bookstore PGDATABASE=bookstore PGPASSWORD=bookstore PGPORT=5432 node server-bundled.js",
+    "watch-client": "webpack --mode=development --config webpack.client.config.js",
+    "build-client": "webpack --mode=production --config webpack.client.config.js",
+    "watch-server": "webpack --mode=development --config webpack.server.config.js",
+    "build-server": "webpack --mode=production --config webpack.server.config.js",
     "fix": "semistandard --fix",
     "test": ""
   },

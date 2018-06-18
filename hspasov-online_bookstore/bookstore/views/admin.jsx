@@ -11,3 +11,5 @@ render(
   <AdminPage />,
   document.getElementById('content')
 );
+
+module.exports = AdminPage;

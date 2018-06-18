@@ -1,3 +1,5 @@
+require("babel-polyfill");
+
 const Koa = require('koa');
 const logger = require('koa-logger');
 const bodyParser = require('koa-bodyparser');
