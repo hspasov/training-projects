@@ -21,11 +21,13 @@ const musicTable = document.getElementById('music-table');
 const resultsFoundMessage = document.getElementById('results-found-message');
 const searchStatus = document.getElementById('search-status');
 const errorDialog = document.getElementById('error-dialog');
-const closeErrorDialogButton = document.getElementById('close-error-dialog-button');
 const errorDialogMessage = document.getElementById('error-dialog-message');
 const artistDialog = document.getElementById('artist-dialog');
 const artistImage = document.getElementById('artist-image');
+const artistDialogTitle = document.getElementById('artist-dialog-title');
 const closeArtistDialogButton = document.getElementById('close-artist-dialog-button');
+const exampleModal = document.getElementById('exampleModalCenter');
+
 let tableData = [];
 let channelAddressData = [];
 
@@ -76,7 +78,7 @@ function handleError (e) {
     }
   }
 
-  errorDialog.showModal();
+  $('#error-dialog').modal('show');
 }
 
 function fixAppState () {
@@ -90,24 +92,22 @@ function fixAppState () {
   }
 }
 
-function closeErrorDialog () {
-  errorDialog.close();
-}
-
 function closeArtistDialog () {
   artistImage.src = '';
-  artistDialog.close();
 }
 
 async function showArtistDialog (e) {
   e.preventDefault(); // to not open link, when clicked, as new page
 
+  const artistName = e.target.innerHTML;
+  
   assertApp(artistImage instanceof window.HTMLImageElement, 'Element artistImage not found.');
-  assertApp(artistDialog instanceof window.HTMLDialogElement, 'Element artistDialog not found.');
+  assertApp(artistDialogTitle instanceof window.HTMLHeadingElement, 'Element artistDialogTitle not found.');
   assertApp(typeof e.target.innerHTML === 'string', `Expected typeof e.target.innerHTML to be string, but got ${typeof e.target.innerHTML}`);
 
-  artistImage.src = await getArtistImage(e.target.innerHTML);
-  artistDialog.showModal();
+  artistImage.src = await getArtistImage(artistName);
+  artistDialogTitle.innerHTML = artistName;
+  $('#artist-dialog').modal('show');
 }
 
 function channelAddressSubmitOnClick () {
@@ -306,11 +306,11 @@ function removeChannelAddressInput (event) {
   channelAddressData = channelAddressData.filter(data => {
     assertApp(
       isObject(data) &&
-      typeof data.id === 'number',
+      typeof Number(data.id) === 'number',
       'Invalid channel address data.'
     );
 
-    return data.id === inputId;
+    return Number(data.id) !== Number(inputId);
   });
 
   if (channelAddressData.length <= 0) {
@@ -410,7 +410,7 @@ function restoreStateFromLocalStorage () {
   }
 
   assertApp(resultsFoundMessage instanceof window.HTMLParagraphElement, 'Element resultsFoundMessage, instance of HTMLParagraphElement, not found.');
-  
+
   if (state.channelAddressData) {
     for (const data of state.channelAddressData) {
       addChannelAddressInput(data);
@@ -899,8 +899,6 @@ removeAllChannelAddressInputsButton.onclick = () => {
   addChannelAddressInput();
   saveStateToLocalStorage();
 };
-closeErrorDialogButton.onclick = closeErrorDialog;
-closeArtistDialogButton.onclick = closeArtistDialog;
 
 musicTable.style.visibility = 'hidden';
 resultsFoundMessage.style.visibility = 'hidden';
