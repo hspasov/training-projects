@@ -1,5 +1,42 @@
 'use strict';
 
+class ApplicationError extends Error {}
+class PeerError extends Error {}
+class UserError extends Error {}
+
+function handleError (e) {
+  console.log(e);
+
+  fixAppState();
+
+  if (e instanceof UserError) {
+    errorDialogMessage.innerHTML = e.message;
+  } else {
+    errorDialogMessage.innerHTML = 'An unexpected error has occurred.';
+
+    if (DEBUG_MODE) {
+      console.error(e.message);
+    }
+  }
+
+  $('#error-dialog').modal('show');
+}
+
+window.addEventListener('error', (event) => {
+  console.log('error', event);
+  handleError(event.error);
+});
+window.addEventListener('unhandledrejection', (event) => {
+  console.log('unhandledrejection');
+  handleError(event.reason);
+});
+
+window.addEventListener('rejectionhandled', (event) => {
+  console.log('rejectionhandled');
+  handleError(event.reason);
+});
+
+
 const DEBUG_MODE = true;
 
 // YT = YouTube
@@ -35,10 +72,6 @@ let resultsFound = 0;
 let unsuccessfullyParsed = 0;
 let inputId = 0;
 
-class ApplicationError extends Error {}
-class PeerError extends Error {}
-class UserError extends Error {}
-
 function assertPeer (assertion, errorMessage) {
   if (!assertion) {
     throw new PeerError(errorMessage);
@@ -61,24 +94,6 @@ function warning (msg) {
   if (DEBUG_MODE) {
     console.log(msg);
   }
-}
-
-function handleError (e) {
-  console.log(e);
-
-  fixAppState();
-
-  if (e instanceof UserError) {
-    errorDialogMessage.innerHTML = e.message;
-  } else {
-    errorDialogMessage.innerHTML = 'An unexpected error has occurred.';
-
-    if (DEBUG_MODE) {
-      console.error(e.message);
-    }
-  }
-
-  $('#error-dialog').modal('show');
 }
 
 function fixAppState () {
@@ -111,6 +126,7 @@ async function showArtistDialog (e) {
 }
 
 function channelAddressSubmitOnClick () {
+  throw new Error('Catch me if you can');
   const channelAddressInputs = document.getElementsByClassName('channel-address-input');
 
   clearTable();
@@ -148,7 +164,7 @@ function channelAddressSubmitOnClick () {
 
   Promise.all(promises).then(() => {
     searchStatus.style.visibility = 'visible';
-    searchStatus.innerHTML = 'Finished';
+    searchStatus.innerHTML = 'Finished.';
     channelAddressSubmit.disabled = false;
     removeAllChannelAddressInputsButton.disabled = false;
     addChannelAddressInputButton.disabled = false;
@@ -224,7 +240,7 @@ function addChannelAddressInput (input) {
 
   inputBlock.className = `row input-${inputId.toString()}`;
   channelAddressCol.className = `col-md-12 col-xs-12 input-group input-${inputId.toString()}`;
-  getUntilLastCol.className = `col-md-3 col-xs-3 input-${inputId.toString()}`;
+  getUntilLastCol.className = `input-${inputId.toString()}`;
 
   inputChannel.type = 'text';
   inputChannel.className = `channel-address-input form-control input-${inputId.toString()}`;
@@ -302,6 +318,7 @@ function removeChannelAddressInput (event) {
   );
 
   let channelAddressRow = elements[0];
+
   channelAddressRow.remove();
   channelAddressData = channelAddressData.filter(data => {
     assertApp(
@@ -310,7 +327,7 @@ function removeChannelAddressInput (event) {
       'Invalid channel address data.'
     );
 
-    return Number(data.id) !== Number(inputId);
+    return +data.id !== Number(inputId);
   });
 
   if (channelAddressData.length <= 0) {
@@ -697,6 +714,7 @@ function updateTable () {
     releasedCell.innerHTML = data.publishedAt;
     channelCell.innerHTML = data.channel;
   }
+
   const artistPopUps = document.getElementsByClassName('artist-pop-up');
 
   assertApp(artistPopUps instanceof window.HTMLCollection, 'Element artistPopUps not found.');
@@ -715,8 +733,8 @@ function generateArtistCellInnerHTML (artistNames) {
 
   for (let k = 0; k < artistNames.length; k++) {
     const artistName = artistNames[k];
-
     const artistPopUp = document.createElement('a');
+  
     artistPopUp.innerHTML = artistName;
     artistPopUp.href = '';
     artistPopUp.setAttribute('class', 'artist-pop-up');
@@ -726,6 +744,7 @@ function generateArtistCellInnerHTML (artistNames) {
     } else if (k !== 0 && k === artistNames.length - 1) {
       artistCellInnerHTML += ' & ';
     }
+
     artistCellInnerHTML += artistPopUp.outerHTML;
   }
 
@@ -739,8 +758,7 @@ function toQueryString (params) {
     paramsList.push([encodeURIComponent(param), encodeURIComponent(val)]);
   }
 
-  return paramsList.map(pair => pair.join('='))
-    .join('&');
+  return paramsList.map(pair => pair.join('=')).join('&');
 }
 
 async function getResponse (url, queryParams) {
@@ -887,13 +905,11 @@ function isObject (value) {
 }
 
 channelAddressSubmit.onclick = async () => {
-  try {
-    await channelAddressSubmitOnClick();
-  } catch (error) {
-    handleError(error);
-  }
+  channelAddressSubmitOnClick();
 };
+
 addChannelAddressInputButton.onclick = () => addChannelAddressInput();
+
 removeAllChannelAddressInputsButton.onclick = () => {
   clearChannelAddressInputs();
   addChannelAddressInput();
@@ -905,20 +921,6 @@ resultsFoundMessage.style.visibility = 'hidden';
 searchStatus.style.visibility = 'hidden';
 restoreStateFromLocalStorage();
 
-// window.onunhandledrejection = (event) => {
-//   console.log('test');
-// }
-
-window.addEventListener('error', (event) => {
-  console.log('error');
-  // handleError(error)
-});
-window.addEventListener('unhandledrejection', (event) => {
-  console.log('unhandledrejection');
-  // handleError(error);
-});
-
-window.addEventListener('rejectionhandled', (event) => {
-  console.log('rejectionhandled');
-  // handleError(error);
-});
+window.onunhandledrejection = (event) => {
+  console.log('test');
+}
