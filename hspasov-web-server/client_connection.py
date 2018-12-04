@@ -9,7 +9,7 @@ from log import log, TRACE, DEBUG, INFO
 from http_meta import ResponseMeta
 from http_msg_formatter import HTTP1_1MsgFormatter
 from cgi_handler import CGIHandler, CGIMsgFormatter
-from web_server_utils import resolve_web_server_path
+from web_server_utils import resolve_web_server_path, resolve_static_file_path
 
 
 class ClientConnection:
@@ -116,7 +116,17 @@ class ClientConnection:
     def serve_static_file(self, file_path):
         log.error(TRACE)
 
-        os.chroot(CONFIG['web_server_root'])
+        # TODO check - when chroot called, process exits with status code 70
+        #try:
+        #    log.error(DEBUG, msg='going to chroot')
+        #    os.chroot(CONFIG['web_server_root'])
+        #    log.error(DEBUG, msg='after chroot')
+        #except Exception as error:
+        #    log.error(DEBUG, msg='Exception')
+        #    log.error(DEBUG, msg=error)
+        #finally:
+        #    log.error(DEBUG, msg='inside finally')
+
         os.setreuid(UID, UID)
 
         with open(file_path, mode='rb') as content_file:

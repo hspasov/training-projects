@@ -23,6 +23,7 @@
     "var_value",
     "msg"
   ],
+  "workers": 3,
   "access_log_level": 1,
   "access_log_fields": [
     "pid",
