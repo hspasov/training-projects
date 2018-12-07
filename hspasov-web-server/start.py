@@ -21,12 +21,11 @@ def start():
     except OSError as error:
         log.error(DEBUG, msg='OSError thrown while initializing web server')
         log.error(INFO, msg=error)
-    except AssertionError as error:
-        log.error(DEBUG, msg='AssertionError thrown')
-        log.error(INFO, msg=str(error) + str(traceback.format_exc()))
     except Exception as error:
         log.error(DEBUG, msg='Exception thrown')
         log.error(INFO, msg=str(error) + str(traceback.format_exc()))
+    finally:
+        server.stop()
 
 
 if __name__ == '__main__':
