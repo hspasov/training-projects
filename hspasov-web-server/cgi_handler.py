@@ -1,4 +1,5 @@
 import os
+import signal
 from config import CONFIG
 from log import log, TRACE, DEBUG
 from http_meta import RequestMeta
@@ -62,9 +63,10 @@ class CGIMsgFormatter:
 
 
 class CGIHandler:
-    def __init__(self, read_fd, write_fd):
+    def __init__(self, read_fd, write_fd, script_pid):
         self._read_fd = read_fd
         self._write_fd = write_fd
+        self._script_pid = script_pid
         self.msg_buffer = b''
         self.bytes_written = 0
         self._cgi_res_meta_raw = b''
@@ -112,3 +114,8 @@ class CGIHandler:
             return None
 
         return self._cgi_res_meta_raw
+
+    def kill(self, signum, frame):
+        log.error(DEBUG)
+
+        os.kill(self._script_pid, signal.SIGTERM)

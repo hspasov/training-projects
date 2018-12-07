@@ -3,6 +3,7 @@ import socket
 import os
 import sys
 import traceback
+import signal
 from uid import UID
 from config import CONFIG
 from log import log, TRACE, DEBUG, INFO
@@ -117,49 +118,62 @@ class ClientConnection:
         log.error(TRACE)
 
         # TODO check - when chroot called, process exits with status code 70
-        #try:
+        # try:
         #    log.error(DEBUG, msg='going to chroot')
         #    os.chroot(CONFIG['web_server_root'])
         #    log.error(DEBUG, msg='after chroot')
-        #except Exception as error:
+        # except Exception as error:
         #    log.error(DEBUG, msg='Exception')
         #    log.error(DEBUG, msg=error)
-        #finally:
+        # finally:
         #    log.error(DEBUG, msg='inside finally')
 
-        os.setreuid(UID, UID)
+        # os.setreuid(UID, UID)
 
-        with open(file_path, mode='rb') as content_file:
-            log.error(TRACE, msg='requested file opened')
+        try:
+            with open(file_path, mode='rb') as content_file:
+                log.error(TRACE, msg='requested file opened')
 
-            self.res_meta.content_length = os.path.getsize(file_path)
+                self.res_meta.content_length = os.path.getsize(file_path)
 
-            log.error(DEBUG, var_name='content_length',
-                      var_value=self.res_meta.content_length)
+                log.error(DEBUG, var_name='content_length',
+                        var_value=self.res_meta.content_length)
 
-            self.res_meta.headers[b'Content-Length'] = bytes(
-                str(self.res_meta.content_length),
-                'utf-8'
-            )
-            self.send_meta(b'200', self.res_meta.headers)
+                self.res_meta.headers[b'Content-Length'] = bytes(
+                    str(self.res_meta.content_length),
+                    'utf-8'
+                )
+                self.send_meta(b'200', self.res_meta.headers)
 
-            self.res_meta.packages_sent = 1
+                self.res_meta.packages_sent = 1
 
-            while True:
-                response = content_file.read(
-                    CONFIG['read_buffer'])
-                log.error(DEBUG, var_name='response', var_value=response)
+                while True:
+                    response = content_file.read(
+                        CONFIG['read_buffer'])
+                    log.error(DEBUG, var_name='response', var_value=response)
 
-                if len(response) <= 0:
-                    log.error(TRACE, msg='end of file reached while reading')
-                    break
+                    if len(response) <= 0:
+                        log.error(TRACE, msg='end of file reached while reading')
+                        break
 
-                log.error(TRACE,
-                          msg=('sending response.. ' +
-                               'response_packages_sent: ' +
-                               '{0}'.format(self.res_meta.packages_sent)))
+                    log.error(TRACE,
+                            msg=('sending response.. ' +
+                                'response_packages_sent: ' +
+                                '{0}'.format(self.res_meta.packages_sent)))
 
-                self.send(response)
+                    self.send(response)
+        except FileNotFoundError as error:
+            log.error(DEBUG, msg=error)
+
+            self.send_meta(b'404')
+
+            return
+        except IsADirectoryError as error:
+            log.error(DEBUG, msg=error)
+
+            self.send_meta(b'404')
+
+            return
 
     def serve_cgi_script(self, file_path):
         log.error(TRACE)
@@ -187,8 +201,12 @@ class ClientConnection:
                     assert isinstance(key, str)
                     assert isinstance(value, str)
 
-                os.execve(resolve_web_server_path(file_path),
-                          [file_path], cgi_env)
+                try:
+                    os.execve(resolve_web_server_path(file_path),
+                              [file_path], cgi_env)
+                except (FileNotFoundError, IsADirectoryError) as error:
+                    log.error(DEBUG, msg=error)
+                    os._exit(os.EX_NOINPUT)
             except OSError as error:
                 log.error(INFO, msg=error)
                 os._exit(os.EX_OSERR)
@@ -197,87 +215,97 @@ class ClientConnection:
                 os._exit(os.EX_SOFTWARE)
             finally:  # this should never run
                 err_msg = ('Unexpected condition. exec* function did not ' +
-                           'run before finally.'),
+                           'run before finally or missing exit call'),
                 log.error(INFO, msg=(str(err_msg) + str(traceback.format_exc)))
                 os._exit(os.EX_SOFTWARE)
         else:  # parent process
             log.error(DEBUG, msg='New child created with pid {0}'.format(pid))
 
-            os.close(child_read)
-            os.close(child_write)
+            try:
+                os.close(child_read)
+                os.close(child_write)
 
-            cgi_handler = CGIHandler(parent_read, parent_write)
+                cgi_handler = CGIHandler(parent_read, parent_write, pid)
 
-            if cgi_env['CONTENT_LENGTH'] is not None:
-                # sending remaining received from receive_meta bytes, which are
-                # not meta, but part of the body
-                cgi_handler.send(self._msg_buffer)
+                signal.signal(signal.SIGALRM, cgi_handler.kill)
+                signal.alarm(CONFIG['cgi_timeout'])
 
-                content_length = int(cgi_env['CONTENT_LENGTH'])
+                log.error(DEBUG, msg='set alarm for {0} seconds'.format(CONFIG['cgi_timeout']))
 
-                log.error(TRACE, msg='before write to cgi loop')
-                log.error(DEBUG, var_name='bytes_written',
-                          var_value=cgi_handler.bytes_written)
-                log.error(DEBUG, var_name='content_length',
-                          var_value=content_length)
-
-                while cgi_handler.bytes_written < content_length:
-                    try:
-                        self.receive()
-                    except socket.timeout:
-                        log.error(TRACE,
-                                  msg='timeout while receiving from client')
-                        self.send_meta(b'408')
-                        return
-
-                    log.error(DEBUG, var_name='_msg_buffer',
-                              var_value=self._msg_buffer)
-
-                    if len(self._msg_buffer) <= 0:
-                        log.error(TRACE, msg='connection closed by peer')
-                        return
-
+                if cgi_env['CONTENT_LENGTH'] is not None:
+                    # sending remaining received from receive_meta bytes, which are
+                    # not meta, but part of the body
                     cgi_handler.send(self._msg_buffer)
 
-            self.state = ClientConnection.State.SENDING
+                    content_length = int(cgi_env['CONTENT_LENGTH'])
 
-            cgi_res_meta_raw = cgi_handler.receive_meta()
+                    log.error(TRACE, msg='before write to cgi loop')
+                    log.error(DEBUG, var_name='bytes_written',
+                            var_value=cgi_handler.bytes_written)
+                    log.error(DEBUG, var_name='content_length',
+                            var_value=content_length)
 
-            if cgi_res_meta_raw is None:
-                self.send_meta(b'502')
-                return
+                    while cgi_handler.bytes_written < content_length:
+                        try:
+                            self.receive()
+                        except socket.timeout:
+                            log.error(TRACE,
+                                    msg='timeout while receiving from client')
+                            self.send_meta(b'408')
+                            return
 
-            log.error(TRACE, msg='parsing CGI meta...')
+                        log.error(DEBUG, var_name='_msg_buffer',
+                                var_value=self._msg_buffer)
 
-            res_headers = CGIMsgFormatter.parse_cgi_res_meta(cgi_res_meta_raw)
+                        if len(self._msg_buffer) <= 0:
+                            log.error(TRACE, msg='connection closed by peer')
+                            return
 
-            if res_headers is None:
-                self.send_meta(b'502')
-                return
+                        cgi_handler.send(self._msg_buffer)
 
-            if 'Status' in res_headers and res_headers['Status'] in HTTP1_1MsgFormatter.response_reason_phrases.keys():
-                self.send_meta(res_headers['Status'], res_headers)  # TODO maybe status code should not be in headers
-            else:
-                self.send_meta(b'200', res_headers)
+                self.state = ClientConnection.State.SENDING
 
-            if len(cgi_handler.msg_buffer) > 0:
-                self.send(cgi_handler.msg_buffer)
+                cgi_res_meta_raw = cgi_handler.receive_meta()
 
-            while True:
-                cgi_handler.receive()
+                if cgi_res_meta_raw is None:
+                    self.send_meta(b'502')
+                    return
 
-                if len(cgi_handler.msg_buffer) <= 0:
-                    log.error(TRACE,
-                              msg='end of cgi response reached while reading')
-                    break
+                log.error(TRACE, msg='parsing CGI meta...')
 
-                log.error(TRACE, msg='sending response..')
+                res_headers = CGIMsgFormatter.parse_cgi_res_meta(cgi_res_meta_raw)
 
-                self.send(cgi_handler.msg_buffer)
+                if res_headers is None:
+                    self.send_meta(b'502')
+                    return
 
-            pid, exit_status = os.wait()
-            log.error(DEBUG, msg=('child {0} exited.'.format(pid) +
-                                  ' exit_status: {0}'.format(exit_status)))
+                if 'Status' in res_headers and res_headers['Status'] in HTTP1_1MsgFormatter.response_reason_phrases.keys():
+                    self.send_meta(res_headers['Status'], res_headers)  # TODO maybe status code should not be in headers
+                else:
+                    self.send_meta(b'200', res_headers)
+
+                if len(cgi_handler.msg_buffer) > 0:
+                    self.send(cgi_handler.msg_buffer)
+
+                while True:
+                    cgi_handler.receive()
+
+                    if len(cgi_handler.msg_buffer) <= 0:
+                        log.error(TRACE,
+                                msg='end of cgi response reached while reading')
+                        break
+
+                    log.error(TRACE, msg='sending response..')
+
+                    self.send(cgi_handler.msg_buffer)
+
+            finally:
+                pid, exit_status = os.wait()
+
+                signal.alarm(0)
+
+                log.error(DEBUG, msg=('child {0} exited.'.format(pid) +
+                                    ' exit_status: {0}'.format(exit_status)))
 
     def shutdown(self):
         log.error(TRACE)
