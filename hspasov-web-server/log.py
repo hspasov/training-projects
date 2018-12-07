@@ -87,7 +87,8 @@ class Log:
         self.access_log_file = open(CONFIG['access_log'], mode='a')
 
     def close_access_log_file(self):
-        self.access_log_file.close()
+        if self.access_log_file is not None:
+            self.access_log_file.close()
         self.access_log_file = None
 
 
