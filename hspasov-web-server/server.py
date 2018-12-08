@@ -53,17 +53,18 @@ class Server:
 
                             worker = Worker(self._socket, self._accept_lock_fd)
                             worker.start()
+
                         except Exception as error:
                             log.error(INFO, msg=error)
                         finally:
                             os._exit(os.EX_SOFTWARE)
                     else:  # parent process
                         self._worker_pids.append(pid)
-                        log.error(DEBUG, msg='New worker created with pid {0}'.format(pid))  # noqa
+                        log.error(DEBUG, msg='New worker created with pid {0}'.format(pid))
 
                 worker_pid, worker_exit_status = os.wait()
 
-                log.error(ERROR, msg='Worker with pid {0} exited with status code {1}'.format(pid, os.WEXITSTATUS(worker_exit_status)))  # noqa
+                log.error(INFO, msg='Worker with pid {0} exited with status code {1}'.format(worker_pid, os.WEXITSTATUS(worker_exit_status)))
 
                 self._worker_pids.remove(worker_pid)
 

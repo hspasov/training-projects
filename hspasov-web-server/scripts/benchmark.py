@@ -97,9 +97,9 @@ def prettify_test_result(test_result):
 
     for ab_field in test_result.ab_fields:
         if ab_field.value_suffix == ' [ms] (mean)':
-            result += 'Time per request [ms] (mean): {0}\n'.format(ab_field.value)  # noqa
-        elif ab_field.value_suffix == ' [ms] (mean, across all concurrent requests)':  # noqa
-            result += 'Time per request [ms] (mean, across all concurrent requests): {0}\n'.format(ab_field.value)  # noqa
+            result += 'Time per request [ms] (mean): {0}\n'.format(ab_field.value)
+        elif ab_field.value_suffix == ' [ms] (mean, across all concurrent requests)':
+            result += 'Time per request [ms] (mean, across all concurrent requests): {0}\n'.format(ab_field.value)
         else:
             result += '{0}: {1}\n'.format(ab_field.name, ab_field.value)
 
@@ -130,7 +130,7 @@ def calc_tests_avr(test_results):
             test_result.ab_fields
         ))
         time_per_req_mean_total_field = next(filter(
-            lambda ab_field: ab_field.value_suffix == ' [ms] (mean, across all concurrent requests)',  # noqa
+            lambda ab_field: ab_field.value_suffix == ' [ms] (mean, across all concurrent requests)',
             test_result.ab_fields
         ))
         transfer_rate_field = next(filter(
@@ -162,7 +162,7 @@ def calc_tests_avr(test_results):
                 value_text='?',
                 value=sum_time_per_req_mean / len(test_results)
             ))
-        elif field.value_suffix == ' [ms] (mean, across all concurrent requests)':  # noqa
+        elif field.value_suffix == ' [ms] (mean, across all concurrent requests)':
             result_ab_fields.append(field._replace(
                 value_text='?',
                 value=sum_time_per_req_mean_total / len(test_results)
@@ -223,7 +223,7 @@ def run_tests(*, urls, request_numbers, concurrences):
 
         for result in concurrencies_results:
             time_per_req_mean_total_field = next(filter(
-                lambda ab_field: ab_field.value_suffix == ' [ms] (mean, across all concurrent requests)',  # noqa
+                lambda ab_field: ab_field.value_suffix == ' [ms] (mean, across all concurrent requests)',
                 result.ab_fields
             ))
 

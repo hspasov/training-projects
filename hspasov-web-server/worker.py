@@ -1,7 +1,8 @@
 import os
 import fcntl
+import traceback
 from http_meta import RequestMeta
-from log import log, DEBUG, TRACE
+from log import log, INFO, DEBUG, TRACE
 from config import CONFIG
 from client_connection import ClientConnection
 from web_server_utils import resolve_static_file_path
@@ -30,7 +31,7 @@ class Worker:
                 if client_conn.state != (
                     ClientConnection.State.RECEIVING
                 ):
-                    break
+                    continue
 
                 log.error(TRACE, msg='resolving file_path...')
 
@@ -60,12 +61,19 @@ class Worker:
                         resolve_static_file_path(file_path)
                     )
                     log.error(DEBUG, msg='after serve static file')
+            except ConnectionError as error:
+                log.error(DEBUG, msg='ConnectionError')
+                log.error(DEBUG, msg=error)
             except OSError as error:
+                log.error(DEBUG, msg='OSError')
                 log.error(DEBUG, msg=error)
 
                 if client_conn is not None:
                     client_conn.send_meta(b'503')
             except Exception as error:
+                log.error(INFO, msg='Exception')
+                log.error(INFO, msg=error)
+                log.error(INFO, msg=str(traceback.format_exc()))
                 log.error(DEBUG, msg=error)
 
                 if client_conn is not None:
@@ -87,8 +95,8 @@ class Worker:
 
                     log.access(
                         1,
-                        remote_addr='{0}:{1}'.format(client_conn.remote_addr,  # noqa
-                                                        client_conn.remote_port),  # noqa
+                        remote_addr='{0}:{1}'.format(client_conn.remote_addr,
+                                                        client_conn.remote_port),
                         req_line=req_line,
                         user_agent=user_agent,
                         status_code=client_conn.res_meta.status_code,

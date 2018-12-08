@@ -61,6 +61,7 @@ class ClientConnection:
 
             if len(self._msg_buffer) <= 0:
                 log.error(TRACE, msg='connection closed by peer')
+                self.state = ClientConnection.State.CLOSED
                 return
 
             if self._req_meta_raw.find(b'\r\n\r\n') != -1:
@@ -211,12 +212,12 @@ class ClientConnection:
                 log.error(INFO, msg=error)
                 os._exit(os.EX_OSERR)
             except Exception as error:
-                log.error(INFO, msg=(str(error) + str(traceback.format_exc)))
+                log.error(INFO, msg=(str(error) + str(traceback.format_exc())))
                 os._exit(os.EX_SOFTWARE)
             finally:  # this should never run
                 err_msg = ('Unexpected condition. exec* function did not ' +
                            'run before finally or missing exit call'),
-                log.error(INFO, msg=(str(err_msg) + str(traceback.format_exc)))
+                log.error(INFO, msg=(str(err_msg) + str(traceback.format_exc())))
                 os._exit(os.EX_SOFTWARE)
         else:  # parent process
             log.error(DEBUG, msg='New child created with pid {0}'.format(pid))
