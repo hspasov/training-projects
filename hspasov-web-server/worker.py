@@ -1,6 +1,7 @@
 import os
 import fcntl
 import traceback
+from profiler import Profiler
 from http_meta import RequestMeta
 from log import log, INFO, DEBUG, TRACE
 from config import CONFIG
@@ -13,6 +14,7 @@ class Worker:
         log.error(DEBUG)
 
         self._socket = socket
+        self._profiler = Profiler()
         self._accept_lock_fd = accept_lock_fd
 
     def start(self):
@@ -82,7 +84,16 @@ class Worker:
                 if client_conn is not None:
                     try:
                         client_conn.shutdown()
-                        client_conn.close()
+                        client_conn_monit = client_conn.close()
+
+                        if self._profiler.get_monits_count() >= CONFIG['max_monits']:
+                            log.error(INFO,
+                                    var_name='averages',
+                                    var_value=self._profiler.get_averages())
+                            # TODO it should be INFO only for dev purposes
+                            self._profiler = Profiler()
+
+                        self._profiler.add_monit(client_conn_monit)
                     except Exception as error:
                         log.error(DEBUG, msg=error)
 

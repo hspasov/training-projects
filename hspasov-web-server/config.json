@@ -14,7 +14,7 @@
   "document_root": "/html",
   "cgi_dir": "/cgi-bin",
   "access_log": "/media/hspasov/Files/TelebidPro/training-projects/hspasov-web-server/logs/access.log",
-  "error_log_level": 3,
+  "error_log_level": 1,
   "error_log_fields": [
     "pid",
     "timestamp",
@@ -24,7 +24,7 @@
     "var_value",
     "msg"
   ],
-  "workers": 3,
+  "workers": 10,
   "access_log_level": 1,
   "access_log_fields": [
     "pid",
@@ -38,5 +38,6 @@
   "access_log_field_sep": "  ",
   "error_log_field_sep": "  ",
   "access_log_empty_field": "-",
-  "error_log_empty_field": "-"
+  "error_log_empty_field": "-",
+  "max_monits": 2000
 }
